@@ -16,8 +16,9 @@ HAPROXY_PEM = '/usr/local/etc/haproxy/haproxy.pem'
 
 
 def write_haproxy_pem():
-    pem = os.getenv('HAPROXY_PEM')
-    if pem:
+    raw_pem = os.getenv('HAPROXY_PEM')
+    if raw_pem:
+        pem = base64.b64decode(raw_pem).decode('utf-8')
         logging.info('Writing HAProxy SSL cert/private key to %s..', HAPROXY_PEM)
         with open(HAPROXY_PEM, 'w') as fd:
             fd.write(pem)
