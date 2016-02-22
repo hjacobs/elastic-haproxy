@@ -6,4 +6,19 @@ HAProxy Appliance for AWS
 
     $ openssl req -x509 -nodes -newkey rsa:2048 -keyout key.pem -out cert.pem -days 300
     $ cat cert.pem key.pem > haproxy-example.pem
-    $ docker run -it -p 8443:443 -v $HOME/.aws:/root/.aws -e BACKEND_INSTANCES_FILTERS=tag:StackName=mystack -e "HAPROXY_CFG_TEMPLATE=$(cat haproxy_template.cfg)" -v $(pwd)/haproxy-example.pem:/haproxy.pem test
+    $ docker run -it -p 8443:443 -v $HOME/.aws:/root/.aws -e UPDATE_INTERVAL=3 -e BACKEND_INSTANCES_FILTERS=tag:StackName=mystack -e "HAPROXY_CFG_TEMPLATE=$(cat haproxy_template.cfg | base64)" -v $(pwd)/haproxy-example.pem:/haproxy.pem test
+
+
+Configuration
+=============
+
+The following environment variables are supported:
+
+``HAPROXY_CFG_TEMPLATE``
+    Filename of haproxy.cfg Jinja2_ template or base64 encoded template string.
+``BACKEND_INSTANCES_FILTERS``
+    Filter to find EC2 instances, e.g. ``tag:StackName=mystack`` would find all EC2 instances with a tag "StackName" with value "mystack".
+``UPDATE_INTERVAL``
+    Update interval in seconds, i.e. how often to query the AWS EC2 API.
+
+.. _Jinja2: http://jinja.pocoo.org/

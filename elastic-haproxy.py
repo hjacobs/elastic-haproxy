@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import base64
 import boto3
 import jinja2
 import logging
@@ -14,15 +15,17 @@ HAPROXY_PID = '/var/run/haproxy.pid'
 
 
 def get_haproxy_cfg_template():
-    template = os.getenv('HAPROXY_CFG_TEMPLATE')
+    raw_template = os.getenv('HAPROXY_CFG_TEMPLATE')
 
-    if not template:
+    if not raw_template:
         sys.stderr.write('Missing HAPROXY_CFG_TEMPLATE environment variable\n')
         sys.exit(1)
 
-    if template.startswith('/'):
-        with open(template) as fd:
+    if raw_template.startswith('/'):
+        with open(raw_template) as fd:
             template = fd.read()
+    else:
+        template = base64.b64decode(raw_template).decode('utf-8')
 
     return template
 
