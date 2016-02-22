@@ -9,7 +9,6 @@ import requests
 import subprocess
 import sys
 import time
-from multiprocessing import Process
 
 HAPROXY_CFG = '/usr/local/etc/haproxy/haproxy.cfg'
 HAPROXY_PID = '/run/haproxy.pid'
@@ -130,13 +129,8 @@ def main():
     template = get_haproxy_cfg_template()
 
     generate_haproxy_cfg(template)
-    haproxy = Process(target=start_haproxy)
-    haproxy.start()
-    job = Process(target=run_background_job, args=(template, ))
-    job.start()
-
-    for proc in (haproxy, job):
-        proc.join(5)
+    start_haproxy()
+    run_background_job(template)
 
 
 if __name__ == '__main__':
