@@ -57,13 +57,24 @@ def generate_haproxy_cfg(template):
 
     servers = sorted(servers)
 
-    logging.info('Generating haproxy.cfg with %d servers..', len(servers))
+    logging.info('Rendering HAProxy configuration with %d servers..', len(servers))
     tpl = jinja2.Template(template)
     rendered_template = tpl.render(servers=servers)
 
-    with open(HAPROXY_CFG + '.tmp', 'w') as fd:
-        fd.write(rendered_template)
-    os.rename(HAPROXY_CFG + '.tmp', HAPROXY_CFG)
+    try:
+        with open(HAPROXY_CFG) as fd:
+            current_config = fd.read()
+    except:
+        current_config = None
+
+    if current_config != rendered_template:
+        logging.info('Writing new HAProxy configuration to haproxy.cfg..')
+        with open(HAPROXY_CFG + '.tmp', 'w') as fd:
+            fd.write(rendered_template)
+        os.rename(HAPROXY_CFG + '.tmp', HAPROXY_CFG)
+        return True
+    else:
+        return False
 
 
 def start_haproxy():
@@ -72,23 +83,26 @@ def start_haproxy():
 
 
 def reload_haproxy():
+    logging.info('Reloading HAProxy..')
     with open(HAPROXY_PID) as fd:
         pid = fd.read().strip()
     subprocess.check_call(['haproxy', '-D', '-f', HAPROXY_CFG, '-p', HAPROXY_PID, '-sf', pid])
 
 
 def run_background_job(template):
+    delay = int(os.getenv('UPDATE_INTERVAL', 30))
     while True:
         try:
-            time.sleep(30)
-            generate_haproxy_cfg(template)
-            reload_haproxy()
+            time.sleep(delay)
+            if generate_haproxy_cfg(template):
+                reload_haproxy()
         except Exception as e:
             logging.exception('Error while running update: {}'.format(e))
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
+    logging.getLogger('botocore.vendored.requests.packages.urllib3').setLevel(logging.WARN)
     template = get_haproxy_cfg_template()
 
     generate_haproxy_cfg(template)
