@@ -5,14 +5,15 @@ import boto3
 import jinja2
 import logging
 import os
+import requests
 import subprocess
 import sys
 import time
 from multiprocessing import Process
 
-HAPROXY_CFG = '/usr/local/etc/haproxy.cfg'
-HAPROXY_PID = '/var/run/haproxy.pid'
-HAPROXY_PEM = '/usr/local/etc/haproxy.pem'
+HAPROXY_CFG = '/usr/local/etc/haproxy/haproxy.cfg'
+HAPROXY_PID = '/run/haproxy.pid'
+HAPROXY_PEM = '/usr/local/etc/haproxy/haproxy.pem'
 
 
 def write_haproxy_pem():
@@ -55,10 +56,19 @@ def get_filters(val=None):
         yield {'Name': name, 'Values': values.split('|')}
 
 
+def get_aws_region():
+    region = os.getenv('AWS_REGION')
+    if not region:
+        r = requests.get('http://169.254.169.254/latest/meta-data/placement/availability-zone', timeout=1)
+        r.raise_for_status()
+        region = r.text.strip()[:-1]
+    return region
+
+
 def generate_haproxy_cfg(template):
     filters = list(get_filters())
 
-    ec2 = boto3.client('ec2')
+    ec2 = boto3.client('ec2', region_name=get_aws_region())
 
     servers = set()
     reservations = ec2.describe_instances(Filters=filters)['Reservations']
