@@ -12,6 +12,15 @@ from multiprocessing import Process
 
 HAPROXY_CFG = '/usr/local/etc/haproxy.cfg'
 HAPROXY_PID = '/var/run/haproxy.pid'
+HAPROXY_PEM = '/usr/local/etc/haproxy.pem'
+
+
+def write_haproxy_pem():
+    pem = os.getenv('HAPROXY_PEM')
+    if pem:
+        logging.info('Writing HAProxy SSL cert/private key to %s..', HAPROXY_PEM)
+        with open(HAPROXY_PEM, 'w') as fd:
+            fd.write(pem)
 
 
 def get_haproxy_cfg_template():
@@ -106,6 +115,8 @@ def run_background_job(template):
 def main():
     logging.basicConfig(level=logging.INFO)
     logging.getLogger('botocore.vendored.requests.packages.urllib3').setLevel(logging.WARN)
+
+    write_haproxy_pem()
     template = get_haproxy_cfg_template()
 
     generate_haproxy_cfg(template)
