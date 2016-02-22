@@ -6,9 +6,11 @@ import logging
 import os
 import subprocess
 import sys
+import time
 from multiprocessing import Process
 
 HAPROXY_CFG = '/usr/local/etc/haproxy.cfg'
+HAPROXY_PID = '/var/run/haproxy.pid'
 
 
 def get_haproxy_cfg_template():
@@ -66,7 +68,23 @@ def generate_haproxy_cfg(template):
 
 def start_haproxy():
     logging.info('Starting HAProxy..')
-    subprocess.check_call(['haproxy', '-f', HAPROXY_CFG])
+    subprocess.check_call(['haproxy', '-D', '-f', HAPROXY_CFG, '-p', HAPROXY_PID])
+
+
+def reload_haproxy():
+    with open(HAPROXY_PID) as fd:
+        pid = fd.read().strip()
+    subprocess.check_call(['haproxy', '-D', '-f', HAPROXY_CFG, '-p', HAPROXY_PID, '-sf', pid])
+
+
+def run_background_job(template):
+    while True:
+        try:
+            time.sleep(30)
+            generate_haproxy_cfg(template)
+            reload_haproxy()
+        except Exception as e:
+            logging.exception('Error while running update: {}'.format(e))
 
 
 def main():
@@ -74,10 +92,13 @@ def main():
     template = get_haproxy_cfg_template()
 
     generate_haproxy_cfg(template)
-    proc = Process(target=start_haproxy)
-    proc.start()
-    proc.join()
+    haproxy = Process(target=start_haproxy)
+    haproxy.start()
+    job = Process(target=run_background_job, args=(template, ))
+    job.start()
 
+    for proc in (haproxy, job):
+        proc.join(5)
 
 
 if __name__ == '__main__':
